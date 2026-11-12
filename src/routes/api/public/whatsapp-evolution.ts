@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 // Webhook da Evolution API: recebe conexão, QR Code, mensagens e status.
-// Autenticação: cabeçalho com o segredo da instância (configurado ao criar a instância).
+// Autenticação: segredo da instância, enviado no cabeçalho e na URL (configurados ao criar a instância).
 export const Route = createFileRoute("/api/public/whatsapp-evolution")({
   server: {
     handlers: {
@@ -11,7 +11,10 @@ export const Route = createFileRoute("/api/public/whatsapp-evolution")({
         const { ingestEvents } = await import("@/lib/whatsapp/ingest.server");
         const { extAdmin } = await import("@/lib/ext/server");
 
-        const provided = request.headers.get(WEBHOOK_SECRET_HEADER) ?? "";
+        // Segredo no cabeçalho (preferido) ou no parâmetro ?s= da URL, para versões da
+        // Evolution que não enviam cabeçalhos personalizados.
+        const provided =
+          request.headers.get(WEBHOOK_SECRET_HEADER) ?? new URL(request.url).searchParams.get("s") ?? "";
         if (!provided) return new Response("Unauthorized", { status: 401 });
 
         let payload: unknown;

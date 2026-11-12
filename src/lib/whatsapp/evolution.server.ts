@@ -54,9 +54,11 @@ async function call(method: "GET" | "POST" | "DELETE", path: string, body?: unkn
 const enc = encodeURIComponent;
 
 function webhookConfig(webhookUrl: string, webhookSecret: string) {
+  const url = new URL(webhookUrl);
+  url.searchParams.set("s", webhookSecret);
   return {
     enabled: true,
-    url: webhookUrl,
+    url: url.toString(),
     byEvents: false,
     base64: false,
     headers: { [WEBHOOK_SECRET_HEADER]: webhookSecret },
