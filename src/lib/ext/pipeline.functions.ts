@@ -3,7 +3,7 @@ import { z } from "zod";
 import { requireAuth } from "./auth";
 import { asksEnrollment, canCloseOpportunity } from "./close-access";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { FunnelStage, Opportunity } from "./model";
+import { findStageByKind, type FunnelStage, type Opportunity } from "./model";
 
 type OpportunityRow = Opportunity & {
   submissions: { public_id: string; children_count: number | null; form_id: string; list_type: string | null } | null;
@@ -703,16 +703,18 @@ export const setOpportunityVisit = createServerFn({ method: "POST" })
         .single();
       const { data: stages } = await admin
         .from("funnel_stages")
-        .select("id, name")
+        .select("id, name, kind")
         .eq("funnel_id", full!.funnel_id);
       const isLead = lt === "leads" || lt === "lead";
+      const stageList = (stages ?? []) as { id: string; name: string; kind: string | null }[];
       const target =
-        (stages ?? []).find((s) => normalizeLabel(s.name).includes(isLead ? "visita agendada" : "matricula agendada")) ??
-        (stages ?? []).find((s) => {
-          const n = normalizeLabel(s.name);
-          return n.includes("visita agendada") || n.includes("matricula agendada");
-        });
-      const kindLabel = target && normalizeLabel(target.name).includes("visita") ? "Visita" : "Matrícula";
+        findStageByKind(stageList, isLead ? "visita_agendada" : "matricula_agendada") ??
+        findStageByKind(stageList, "visita_agendada") ??
+        findStageByKind(stageList, "matricula_agendada");
+      const kindLabel =
+        target && (target.kind === "visita_agendada" || (!target.kind && normalizeLabel(target.name).includes("visita")))
+          ? "Visita"
+          : "Matrícula";
       const now = new Date().toISOString();
       if (target && full && full.stage_id !== target.id) {
         const { data: last } = await admin

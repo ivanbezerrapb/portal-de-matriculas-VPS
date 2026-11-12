@@ -271,7 +271,40 @@ export type Funnel = {
   name: string;
   description: string | null;
   is_default: boolean;
+  /** Tipo fixo do funil (v2). Nulo = ainda não migrado; usa o nome. */
+  kind?: FunnelKind | null;
   created_at: string;
+};
+
+export type FunnelKind = "leads" | "visitantes";
+
+export const FUNNEL_KIND_LABELS: Record<FunnelKind, string> = {
+  leads: "LEADS (objetivo: agendar visita)",
+  visitantes: "Pós-visita (objetivo: agendar matrícula)",
+};
+
+// Tipos fixos de etapa usados pelas automações (agendar, faltou, check-in, matrícula).
+export type StageKind =
+  | "visita_agendada"
+  | "reagendar_visita"
+  | "visita_realizada"
+  | "matricula_agendada"
+  | "reagendar_matricula"
+  | "matriculado";
+
+export const STAGE_KIND_LABELS: Record<StageKind, string> = {
+  visita_agendada: "Visita agendada",
+  reagendar_visita: "Reagendar visita (faltou)",
+  visita_realizada: "Visita realizada (ganho)",
+  matricula_agendada: "Matrícula agendada",
+  reagendar_matricula: "Reagendar matrícula (faltou)",
+  matriculado: "Matriculado (ganho)",
+};
+
+// Quais tipos de etapa fazem sentido em cada tipo de funil.
+export const STAGE_KINDS_BY_FUNNEL: Record<FunnelKind, StageKind[]> = {
+  leads: ["visita_agendada", "reagendar_visita", "visita_realizada"],
+  visitantes: ["matricula_agendada", "reagendar_matricula", "matriculado"],
 };
 
 export type FunnelStage = {
@@ -281,6 +314,8 @@ export type FunnelStage = {
   description: string | null;
   color: string;
   position: number;
+  /** Tipo fixo da etapa (v2). Nulo = etapa comum. */
+  kind?: StageKind | null;
 };
 
 export type Opportunity = {
@@ -321,8 +356,39 @@ export type CloseReason = {
   active: boolean;
 };
 
-// Funis com "lead" no nome pertencem à Lista de LEADS; os demais à Lista de Visitantes.
-export function funnelListType(name: string | null | undefined): "leads" | "visitantes" {
-  const n = (name ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  return /lead/.test(n) ? "leads" : "visitantes";
+const normName = (s: string | null | undefined) =>
+  (s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+// Tipo do funil: usa a coluna `kind` (v2) e, se vazia, a regra antiga pelo nome
+// (funis com "lead" no nome pertencem à Lista de LEADS; os demais à de Visitantes).
+export function funnelListType(
+  funnel: string | null | undefined | { name?: string | null; kind?: string | null },
+): FunnelKind {
+  if (funnel && typeof funnel === "object") {
+    if (funnel.kind === "leads" || funnel.kind === "visitantes") return funnel.kind;
+    return /lead/.test(normName(funnel.name)) ? "leads" : "visitantes";
+  }
+  return /lead/.test(normName(funnel)) ? "leads" : "visitantes";
+}
+
+// Regra antiga (pelo nome) de cada tipo de etapa — usada só quando nenhuma etapa
+// do funil tem `kind` preenchido para aquele tipo.
+const STAGE_NAME_FALLBACK: Record<StageKind, (n: string) => boolean> = {
+  visita_agendada: (n) => n.includes("visita agendada"),
+  reagendar_visita: (n) => n.includes("reagend") && n.includes("visita"),
+  visita_realizada: (n) => n.includes("realizad"),
+  matricula_agendada: (n) => n.includes("matricula agendada"),
+  reagendar_matricula: (n) => n.includes("reagend") && n.includes("matricula"),
+  matriculado: (n) => n.includes("matriculado"),
+};
+
+// Encontra a etapa de um tipo: primeiro pela coluna `kind`, depois pelo nome.
+export function findStageByKind<T extends { name: string; kind?: string | null }>(
+  stages: T[],
+  kind: StageKind,
+): T | undefined {
+  return (
+    stages.find((s) => s.kind === kind) ??
+    stages.find((s) => !s.kind && STAGE_NAME_FALLBACK[kind](normName(s.name)))
+  );
 }

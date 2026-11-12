@@ -649,11 +649,11 @@ export const sendSubmissionToFunnel = createServerFn({ method: "POST" })
 
     const { data: funnel } = await context.supabase
       .from("funnels")
-      .select("id, school_id, name")
+      .select("id, school_id, name, kind")
       .eq("id", data.funnel_id)
       .maybeSingle();
     if (!funnel) throw new Error("Funil não encontrado.");
-    if (funnelListType(funnel.name) !== ((submission as { list_type?: string }).list_type ?? "visitantes")) {
+    if (funnelListType(funnel) !== ((submission as { list_type?: string }).list_type ?? "visitantes")) {
       throw new Error("Este funil não pertence a esta lista.");
     }
     if (funnel.school_id !== submission.school_id) {

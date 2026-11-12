@@ -57,7 +57,7 @@ export function PendingFunnelSection({ enabled }: { enabled: boolean }) {
     <>
         <ul className="flex-1 divide-y divide-border overflow-y-auto">
           {data.map((r) => {
-            const opts = list.filter((f) => f.school_id === r.school_id && funnelListType(f.name) === "visitantes");
+            const opts = list.filter((f) => f.school_id === r.school_id && funnelListType(f) === "visitantes");
             const c = choice[r.id] ?? {};
             const fOwners = [...new Map(ownerList.filter((o) => o.funnel_id === c.funnel && o.name?.trim()).map((o) => [o.user_id, o])).values()];
             const owner = fOwners.length === 1 ? fOwners[0] : fOwners.find((o) => o.user_id === c.owner);

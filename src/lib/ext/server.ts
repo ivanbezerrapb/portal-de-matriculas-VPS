@@ -1,5 +1,6 @@
 // Somente servidor: clientes do Supabase externo.
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { findStageByKind } from "./model";
 
 function env(name: string): string {
   const v = process.env[name];
@@ -156,7 +157,6 @@ export async function getPerms(supabase: SupabaseClient, userId: string): Promis
 // Garante que cartões abertos de cadastros com check-in (LEADS) ou matrícula
 // realizada (Visitantes) sejam dados como ganhos, na etapa correta, com tarefas
 // concluídas e registro no Histórico. Idempotente; seguro chamar com frequência.
-const normTxt = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 const fmtWhen = (iso: string) =>
   new Intl.DateTimeFormat("pt-BR", {
     timeZone: "America/Fortaleza", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
@@ -210,7 +210,7 @@ export async function reconcileWonOpportunities(
   const funnelIds = [...new Set(targets.map((t) => t.o.funnel_id))];
   const userIds = [...new Set(targets.map((t) => t.by).filter((x): x is string => !!x))];
   const [{ data: stages }, { data: profs }, { data: reason }] = await Promise.all([
-    admin.from("funnel_stages").select("id, name, funnel_id").in("funnel_id", funnelIds),
+    admin.from("funnel_stages").select("id, name, funnel_id, kind").in("funnel_id", funnelIds),
     userIds.length ? admin.from("profiles").select("id, full_name").in("id", userIds) : Promise.resolve({ data: [] }),
     admin.from("crm_close_reasons").select("id").eq("kind", "won").eq("label", "Matrícula realizada").maybeSingle(),
   ]);
@@ -219,8 +219,8 @@ export async function reconcileWonOpportunities(
   const done: { id: string; kind: "checkin" | "matricula" }[] = [];
 
   for (const t of targets) {
-    const fs = ((stages ?? []) as { id: string; name: string; funnel_id: string }[]).filter((s) => s.funnel_id === t.o.funnel_id);
-    const stage = fs.find((s) => normTxt(s.name).includes(t.kind === "checkin" ? "realizad" : "matriculado"));
+    const fs = ((stages ?? []) as { id: string; name: string; funnel_id: string; kind: string | null }[]).filter((s) => s.funnel_id === t.o.funnel_id);
+    const stage = findStageByKind(fs, t.kind === "checkin" ? "visita_realizada" : "matriculado");
     const author = (t.by && names.get(t.by)) || t.email || "Sistema";
     await admin.from("crm_tasks").update({ done: true, done_at: now }).eq("opportunity_id", t.o.id).eq("done", false);
     const { data: upd, error: upErr } = await admin

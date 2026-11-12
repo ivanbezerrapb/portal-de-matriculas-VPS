@@ -198,7 +198,7 @@ export function SubmissionsList({
   const attendantOpts = [...new Set(allRows.map((r) => r.attendant?.name?.trim()).filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b, "pt-BR"));
   const seriesOpts = [...new Set(allRows.flatMap((r) => (r.series ?? []).filter(Boolean)))].sort((a, b) => a.localeCompare(b, "pt-BR"));
   const funnelOpts = (funnelsData?.funnels ?? []).filter(
-    (f) => funnelListType(f.name) === listType && (!schoolId || f.school_id === schoolId),
+    (f) => funnelListType(f) === listType && (!schoolId || f.school_id === schoolId),
   );
   const q = norm(search);
   const filteredRows = allRows.filter((r) => {
@@ -801,7 +801,7 @@ export function SubmissionsList({
                           }
                         ).funnel;
                         const options = (funnelsData?.funnels ?? []).filter(
-                          (f) => f.school_id === s.school_id && funnelListType(f.name) === listType,
+                          (f) => f.school_id === s.school_id && funnelListType(f) === listType,
                         );
                         return (
                           <select

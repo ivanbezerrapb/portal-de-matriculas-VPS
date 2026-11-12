@@ -16,7 +16,16 @@ import {
 } from "@/lib/ext/funis.functions";
 import { listSchools } from "@/lib/ext/escolas.functions";
 import { getMyPermissions } from "@/lib/ext/cadastros.functions";
-import { funnelListType, type Funnel, type FunnelStage } from "@/lib/ext/model";
+import {
+  FUNNEL_KIND_LABELS,
+  STAGE_KIND_LABELS,
+  STAGE_KINDS_BY_FUNNEL,
+  funnelListType,
+  type Funnel,
+  type FunnelKind,
+  type FunnelStage,
+  type StageKind,
+} from "@/lib/ext/model";
 import { Button, Card, EmptyState, Input, Label, Select, Spinner, Textarea } from "@/components/ui";
 
 export const Route = createFileRoute("/_authenticated/crm/funil")({
@@ -41,17 +50,19 @@ export const Route = createFileRoute("/_authenticated/crm/funil")({
 
 const STAGE_COLORS = ["#1e40af", "#0284c7", "#7c3aed", "#d97706", "#059669", "#dc2626", "#475569"];
 
-type StageDraft = { name: string; description: string; color: string };
-const emptyStage: StageDraft = { name: "", description: "", color: STAGE_COLORS[0]! };
+type StageDraft = { name: string; description: string; color: string; kind: StageKind | null };
+const emptyStage: StageDraft = { name: "", description: "", color: STAGE_COLORS[0]!, kind: null };
 
 function StageForm({
   value,
+  funnelKind,
   saving,
   submitLabel,
   onSubmit,
   onCancel,
 }: {
   value: StageDraft;
+  funnelKind: FunnelKind;
   saving: boolean;
   submitLabel: string;
   onSubmit: (draft: StageDraft) => void;
@@ -95,6 +106,23 @@ function StageForm({
         </div>
       </div>
       <div>
+        <Label>Tipo da etapa</Label>
+        <Select
+          value={draft.kind ?? ""}
+          onChange={(e) => setDraft({ ...draft, kind: (e.target.value || null) as StageKind | null })}
+        >
+          <option value="">Etapa comum</option>
+          {STAGE_KINDS_BY_FUNNEL[funnelKind].map((k) => (
+            <option key={k} value={k}>
+              {STAGE_KIND_LABELS[k]}
+            </option>
+          ))}
+        </Select>
+        <p className="mt-1 text-xs text-muted-foreground">
+          As automações (agendar, faltou, check-in e matrícula) usam o tipo, não o nome da etapa.
+        </p>
+      </div>
+      <div>
         <Label>Descrição</Label>
         <Textarea
           rows={2}
@@ -117,7 +145,7 @@ function StageForm({
 function FunilPage() {
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
-  const [funnelForm, setFunnelForm] = useState({ school_id: "", name: "", description: "" });
+  const [funnelForm, setFunnelForm] = useState<{ school_id: string; name: string; description: string; kind: FunnelKind }>({ school_id: "", name: "", description: "", kind: "leads" });
   const [editingFunnel, setEditingFunnel] = useState<string | null>(null);
   const [addingStage, setAddingStage] = useState(false);
   const [editingStage, setEditingStage] = useState<string | null>(null);
@@ -153,7 +181,7 @@ function FunilPage() {
   }
 
   const createFunnelM = useAction(
-    (d: { school_id: string; name: string; description: string }) => createFunnel({ data: d }),
+    (d: { school_id: string; name: string; description: string; kind: FunnelKind }) => createFunnel({ data: d }),
     "Funil criado.",
   );
   const updateFunnelM = useAction(
@@ -163,6 +191,7 @@ function FunilPage() {
       name: string;
       description: string;
       is_default: boolean;
+      kind: FunnelKind;
     }) => updateFunnel({ data: d }),
     "Funil atualizado.",
   );
@@ -206,7 +235,7 @@ function FunilPage() {
   }
 
   const shownFunnels = funnels.filter(
-    (f) => (!fSchool || f.school_id === fSchool) && (!fKind || funnelListType(f.name) === fKind),
+    (f) => (!fSchool || f.school_id === fSchool) && (!fKind || funnelListType(f) === fKind),
   );
   const loading = funnelsQuery.isLoading || schoolsQuery.isLoading;
   const current = funnels.find((f) => f.id === editingFunnel) ?? null;
@@ -238,6 +267,7 @@ function FunilPage() {
                 school_id: String(fd.get("school_id") ?? ""),
                 description: String(fd.get("description") ?? ""),
                 is_default: fd.get("is_default") === "on",
+                kind: (String(fd.get("kind") ?? "") || funnelListType(current)) as FunnelKind,
               });
             }}
           >
@@ -261,6 +291,16 @@ function FunilPage() {
                   ))}
                 </Select>
               </div>
+            </div>
+            <div>
+              <Label>Tipo do funil</Label>
+              <Select name="kind" defaultValue={funnelListType(current)} disabled={!isAdmin}>
+                {(Object.keys(FUNNEL_KIND_LABELS) as FunnelKind[]).map((k) => (
+                  <option key={k} value={k}>
+                    {FUNNEL_KIND_LABELS[k]}
+                  </option>
+                ))}
+              </Select>
             </div>
             <div>
               <Label>Descrição</Label>
@@ -300,7 +340,9 @@ function FunilPage() {
                     name: stage.name,
                     description: stage.description ?? "",
                     color: stage.color,
+                    kind: stage.kind ?? null,
                   }}
+                  funnelKind={funnelListType(current)}
                   saving={updateStageM.isPending}
                   submitLabel="Salvar etapa"
                   onCancel={() => setEditingStage(null)}
@@ -321,7 +363,14 @@ function FunilPage() {
                     style={{ backgroundColor: stage.color }}
                   />
                   <div className="min-w-40 flex-1">
-                    <p className="text-sm font-semibold text-foreground">{stage.name}</p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {stage.name}
+                      {stage.kind && (
+                        <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                          {STAGE_KIND_LABELS[stage.kind]}
+                        </span>
+                      )}
+                    </p>
                     {stage.description && (
                       <p className="text-xs text-muted-foreground">{stage.description}</p>
                     )}
@@ -368,6 +417,7 @@ function FunilPage() {
               (addingStage ? (
                 <StageForm
                   value={emptyStage}
+                  funnelKind={funnelListType(current)}
                   saving={createStageM.isPending}
                   submitLabel="Adicionar etapa"
                   onCancel={() => setAddingStage(false)}
@@ -402,7 +452,7 @@ function FunilPage() {
         {isAdmin && !creating && (
           <Button
             onClick={() => {
-              setFunnelForm({ school_id: schools[0]?.id ?? "", name: "", description: "" });
+              setFunnelForm({ school_id: schools[0]?.id ?? "", name: "", description: "", kind: "leads" });
               setCreating(true);
             }}
           >
@@ -444,6 +494,22 @@ function FunilPage() {
                   ))}
                 </Select>
               </div>
+            </div>
+            <div>
+              <Label>Tipo do funil</Label>
+              <Select
+                value={funnelForm.kind}
+                onChange={(e) => setFunnelForm({ ...funnelForm, kind: e.target.value as FunnelKind })}
+              >
+                {(Object.keys(FUNNEL_KIND_LABELS) as FunnelKind[]).map((k) => (
+                  <option key={k} value={k}>
+                    {FUNNEL_KIND_LABELS[k]}
+                  </option>
+                ))}
+              </Select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                As etapas padrão (agendada, reagendar, ganho) são criadas conforme o tipo.
+              </p>
             </div>
             <div>
               <Label>Descrição</Label>

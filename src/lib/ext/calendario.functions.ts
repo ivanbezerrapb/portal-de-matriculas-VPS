@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuth } from "./auth";
+import { findStageByKind } from "./model";
 
 export type CalendarEvent = {
   id: string;
@@ -184,12 +185,11 @@ export const markVisitNoShow = createServerFn({ method: "POST" })
     if (!o.submissions?.list_type) throw new Error("Cartão sem cadastro vinculado.");
     if (!o.visit_at) throw new Error("Este cartão não tem agendamento.");
 
-    const { data: stages } = await admin.from("funnel_stages").select("id, name").eq("funnel_id", o.funnel_id);
-    const list = (stages ?? []) as { id: string; name: string }[];
-    const word = isVisit ? "visita" : "matricula";
+    const { data: stages } = await admin.from("funnel_stages").select("id, name, kind").eq("funnel_id", o.funnel_id);
+    const list = (stages ?? []) as { id: string; name: string; kind: string | null }[];
     const stage =
-      list.find((s) => norm(s.name).includes("reagend") && norm(s.name).includes(word)) ??
-      list.find((s) => norm(s.name).includes("reagend"));
+      findStageByKind(list, isVisit ? "reagendar_visita" : "reagendar_matricula") ??
+      list.find((s) => !s.kind && norm(s.name).includes("reagend"));
     if (!stage) throw new Error(isVisit ? "Crie a etapa Reagendar visita neste funil." : "Crie a etapa Reagendar Matrícula neste funil.");
 
     const { data: last } = await admin
@@ -254,9 +254,9 @@ export const markEnrollmentDone = createServerFn({ method: "POST" })
 
     const [{ data: reason }, { data: stages }] = await Promise.all([
       admin.from("crm_close_reasons").select("id").eq("kind", "won").eq("label", "Matrícula realizada").maybeSingle(),
-      admin.from("funnel_stages").select("id, name").eq("funnel_id", o.funnel_id),
+      admin.from("funnel_stages").select("id, name, kind").eq("funnel_id", o.funnel_id),
     ]);
-    const stage = ((stages ?? []) as { id: string; name: string }[]).find((s) => norm(s.name).includes("matriculado"));
+    const stage = findStageByKind((stages ?? []) as { id: string; name: string; kind: string | null }[], "matriculado");
     const { error: upErr } = await admin
       .from("opportunities")
       .update({

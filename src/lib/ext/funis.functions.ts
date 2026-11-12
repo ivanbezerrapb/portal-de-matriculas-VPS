@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuth } from "./auth";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Funnel, FunnelStage } from "./model";
+import { funnelListType, type Funnel, type FunnelKind, type FunnelStage, type StageKind } from "./model";
 
 async function requireAdmin(supabase: SupabaseClient, userId: string) {
   const { getPerms } = await import("./server");
@@ -11,13 +11,44 @@ async function requireAdmin(supabase: SupabaseClient, userId: string) {
   return perms;
 }
 
-const DEFAULT_STAGES = [
-  { name: "Novo contato", color: "#1e40af" },
-  { name: "Em atendimento", color: "#0284c7" },
-  { name: "Visita agendada", color: "#d97706" },
-  { name: "Matriculado", color: "#059669" },
-  { name: "Perdido", color: "#dc2626" },
-];
+type DefaultStage = { name: string; color: string; kind: StageKind | null };
+
+// Etapas criadas com cada novo funil, conforme o tipo.
+const DEFAULT_STAGES: Record<FunnelKind, DefaultStage[]> = {
+  leads: [
+    { name: "Novo contato", color: "#1e40af", kind: null },
+    { name: "Em atendimento", color: "#0284c7", kind: null },
+    { name: "Visita agendada", color: "#d97706", kind: "visita_agendada" },
+    { name: "Reagendar visita", color: "#7c3aed", kind: "reagendar_visita" },
+    { name: "Visita realizada", color: "#059669", kind: "visita_realizada" },
+    { name: "Perdido", color: "#dc2626", kind: null },
+  ],
+  visitantes: [
+    { name: "Novo contato", color: "#1e40af", kind: null },
+    { name: "Em atendimento", color: "#0284c7", kind: null },
+    { name: "Matrícula agendada", color: "#d97706", kind: "matricula_agendada" },
+    { name: "Reagendar matrícula", color: "#7c3aed", kind: "reagendar_matricula" },
+    { name: "Matriculado", color: "#059669", kind: "matriculado" },
+    { name: "Perdido", color: "#dc2626", kind: null },
+  ],
+};
+
+const FUNNEL_KINDS = ["leads", "visitantes"] as const;
+const STAGE_KINDS = [
+  "visita_agendada",
+  "reagendar_visita",
+  "visita_realizada",
+  "matricula_agendada",
+  "reagendar_matricula",
+  "matriculado",
+] as const;
+
+// Traduz o erro do índice único (um tipo de etapa por funil).
+function stageError(message: string): Error {
+  if (/funnel_stages_funnel_kind_uniq|duplicate key/i.test(message))
+    return new Error("Já existe outra etapa deste tipo neste funil.");
+  return new Error(message);
+}
 
 export const listFunnels = createServerFn({ method: "GET" })
   .middleware([requireAuth])
@@ -59,6 +90,7 @@ const funnelInput = z.object({
   name: z.string().min(2),
   description: z.string().optional().nullable(),
   is_default: z.boolean().optional(),
+  kind: z.enum(FUNNEL_KINDS).optional(),
 });
 
 // Garante um único funil padrão por escola.
@@ -94,15 +126,18 @@ export const createFunnel = createServerFn({ method: "POST" })
         name: data.name,
         description: data.description || null,
         is_default: isDefault,
+        kind: data.kind ?? funnelListType(data.name),
       })
       .select()
       .single();
     if (error) throw new Error(error.message);
+    const kind: FunnelKind = data.kind ?? funnelListType(data.name);
     const { error: stagesError } = await context.supabase.from("funnel_stages").insert(
-      DEFAULT_STAGES.map((s, i) => ({
+      DEFAULT_STAGES[kind].map((s, i) => ({
         funnel_id: created.id,
         name: s.name,
         color: s.color,
+        kind: s.kind,
         position: i,
       })),
     );
@@ -123,6 +158,7 @@ export const updateFunnel = createServerFn({ method: "POST" })
         name: data.name,
         description: data.description || null,
         ...(data.is_default === undefined ? {} : { is_default: data.is_default }),
+        ...(data.kind === undefined ? {} : { kind: data.kind }),
       })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
@@ -146,13 +182,14 @@ export const duplicateFunnel = createServerFn({ method: "POST" })
         school_id: original.school_id,
         name: `${original.name} (cópia)`,
         description: original.description,
+        kind: original.kind ?? funnelListType(original.name),
       })
       .select()
       .single();
     if (copyError) throw new Error(copyError.message);
     const { data: stages } = await context.supabase
       .from("funnel_stages")
-      .select("name, description, color, position")
+      .select("name, description, color, position, kind")
       .eq("funnel_id", data.id)
       .order("position");
     if (stages?.length) {
@@ -178,6 +215,7 @@ const stageFields = z.object({
   name: z.string().min(1),
   description: z.string().optional().nullable(),
   color: z.string().min(4).max(9),
+  kind: z.enum(STAGE_KINDS).nullable().optional(),
 });
 
 export const createStage = createServerFn({ method: "POST" })
@@ -199,9 +237,10 @@ export const createStage = createServerFn({ method: "POST" })
       name: data.name,
       description: data.description || null,
       color: data.color,
+      kind: data.kind ?? null,
       position: (last?.position ?? -1) + 1,
     });
-    if (error) throw new Error(error.message);
+    if (error) throw stageError(error.message);
     return { ok: true };
   });
 
@@ -216,9 +255,10 @@ export const updateStage = createServerFn({ method: "POST" })
         name: data.name,
         description: data.description || null,
         color: data.color,
+        ...(data.kind === undefined ? {} : { kind: data.kind }),
       })
       .eq("id", data.id);
-    if (error) throw new Error(error.message);
+    if (error) throw stageError(error.message);
     return { ok: true };
   });
 
