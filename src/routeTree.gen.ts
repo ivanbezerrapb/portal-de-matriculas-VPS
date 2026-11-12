@@ -24,6 +24,7 @@ import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedLogsAcessoRouteImport } from './routes/_authenticated/logs-acesso'
 import { Route as AuthenticatedLogsRegistroRouteImport } from './routes/_authenticated/logs-registro'
 import { Route as AuthenticatedMaxbotRouteImport } from './routes/_authenticated/maxbot'
+import { Route as AuthenticatedWhatsappRouteImport } from './routes/_authenticated/whatsapp'
 import { Route as AuthenticatedTemplatesRouteImport } from './routes/_authenticated/templates'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as FSlugRouteImport } from './routes/f/$slug'
@@ -41,6 +42,7 @@ import { Route as AuthenticatedRelatoriosAtendimentoRouteImport } from './routes
 import { Route as AuthenticatedRelatoriosMatriculadosRouteImport } from './routes/_authenticated/relatorios.matriculados'
 import { Route as ApiPublicConfigRouteImport } from './routes/api/public/config'
 import { Route as ApiPublicMaxbotImportRouteImport } from './routes/api/public/maxbot-import'
+import { Route as ApiPublicWhatsappEvolutionRouteImport } from './routes/api/public/whatsapp-evolution'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -118,6 +120,11 @@ const AuthenticatedLogsRegistroRoute =
 const AuthenticatedMaxbotRoute = AuthenticatedMaxbotRouteImport.update({
   id: '/maxbot',
   path: '/maxbot',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedWhatsappRoute = AuthenticatedWhatsappRouteImport.update({
+  id: '/whatsapp',
+  path: '/whatsapp',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedTemplatesRoute = AuthenticatedTemplatesRouteImport.update({
@@ -214,6 +221,11 @@ const ApiPublicMaxbotImportRoute = ApiPublicMaxbotImportRouteImport.update({
   path: '/api/public/maxbot-import',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicWhatsappEvolutionRoute = ApiPublicWhatsappEvolutionRouteImport.update({
+  id: '/api/public/whatsapp-evolution',
+  path: '/api/public/whatsapp-evolution',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -230,6 +242,7 @@ export interface FileRoutesByFullPath {
   '/logs-acesso': typeof AuthenticatedLogsAcessoRoute
   '/logs-registro': typeof AuthenticatedLogsRegistroRoute
   '/maxbot': typeof AuthenticatedMaxbotRoute
+  '/whatsapp': typeof AuthenticatedWhatsappRoute
   '/templates': typeof AuthenticatedTemplatesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
@@ -247,6 +260,7 @@ export interface FileRoutesByFullPath {
   '/relatorios/matriculados': typeof AuthenticatedRelatoriosMatriculadosRoute
   '/api/public/config': typeof ApiPublicConfigRoute
   '/api/public/maxbot-import': typeof ApiPublicMaxbotImportRoute
+  '/api/public/whatsapp-evolution': typeof ApiPublicWhatsappEvolutionRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -263,6 +277,7 @@ export interface FileRoutesByTo {
   '/logs-acesso': typeof AuthenticatedLogsAcessoRoute
   '/logs-registro': typeof AuthenticatedLogsRegistroRoute
   '/maxbot': typeof AuthenticatedMaxbotRoute
+  '/whatsapp': typeof AuthenticatedWhatsappRoute
   '/templates': typeof AuthenticatedTemplatesRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
@@ -280,6 +295,7 @@ export interface FileRoutesByTo {
   '/relatorios/matriculados': typeof AuthenticatedRelatoriosMatriculadosRoute
   '/api/public/config': typeof ApiPublicConfigRoute
   '/api/public/maxbot-import': typeof ApiPublicMaxbotImportRoute
+  '/api/public/whatsapp-evolution': typeof ApiPublicWhatsappEvolutionRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -298,6 +314,7 @@ export interface FileRoutesById {
   '/_authenticated/logs-acesso': typeof AuthenticatedLogsAcessoRoute
   '/_authenticated/logs-registro': typeof AuthenticatedLogsRegistroRoute
   '/_authenticated/maxbot': typeof AuthenticatedMaxbotRoute
+  '/_authenticated/whatsapp': typeof AuthenticatedWhatsappRoute
   '/_authenticated/templates': typeof AuthenticatedTemplatesRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/f/$slug': typeof FSlugRoute
@@ -315,6 +332,7 @@ export interface FileRoutesById {
   '/_authenticated/relatorios/matriculados': typeof AuthenticatedRelatoriosMatriculadosRoute
   '/api/public/config': typeof ApiPublicConfigRoute
   '/api/public/maxbot-import': typeof ApiPublicMaxbotImportRoute
+  '/api/public/whatsapp-evolution': typeof ApiPublicWhatsappEvolutionRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -333,6 +351,7 @@ export interface FileRouteTypes {
     | '/logs-acesso'
     | '/logs-registro'
     | '/maxbot'
+    | '/whatsapp'
     | '/templates'
     | '/usuarios'
     | '/f/$slug'
@@ -350,6 +369,7 @@ export interface FileRouteTypes {
     | '/relatorios/matriculados'
     | '/api/public/config'
     | '/api/public/maxbot-import'
+    | '/api/public/whatsapp-evolution'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -366,6 +386,7 @@ export interface FileRouteTypes {
     | '/logs-acesso'
     | '/logs-registro'
     | '/maxbot'
+    | '/whatsapp'
     | '/templates'
     | '/usuarios'
     | '/f/$slug'
@@ -383,6 +404,7 @@ export interface FileRouteTypes {
     | '/relatorios/matriculados'
     | '/api/public/config'
     | '/api/public/maxbot-import'
+    | '/api/public/whatsapp-evolution'
   id:
     | '__root__'
     | '/'
@@ -400,6 +422,7 @@ export interface FileRouteTypes {
     | '/_authenticated/logs-acesso'
     | '/_authenticated/logs-registro'
     | '/_authenticated/maxbot'
+    | '/_authenticated/whatsapp'
     | '/_authenticated/templates'
     | '/_authenticated/usuarios'
     | '/f/$slug'
@@ -417,6 +440,7 @@ export interface FileRouteTypes {
     | '/_authenticated/relatorios/matriculados'
     | '/api/public/config'
     | '/api/public/maxbot-import'
+    | '/api/public/whatsapp-evolution'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -427,6 +451,7 @@ export interface RootRouteChildren {
   FSlugRoute: typeof FSlugRoute
   ApiPublicConfigRoute: typeof ApiPublicConfigRoute
   ApiPublicMaxbotImportRoute: typeof ApiPublicMaxbotImportRoute
+  ApiPublicWhatsappEvolutionRoute: typeof ApiPublicWhatsappEvolutionRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -534,6 +559,13 @@ declare module '@tanstack/react-router' {
       path: '/maxbot'
       fullPath: '/maxbot'
       preLoaderRoute: typeof AuthenticatedMaxbotRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/whatsapp': {
+      id: '/_authenticated/whatsapp'
+      path: '/whatsapp'
+      fullPath: '/whatsapp'
+      preLoaderRoute: typeof AuthenticatedWhatsappRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/templates': {
@@ -655,6 +687,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicMaxbotImportRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/whatsapp-evolution': {
+      id: '/api/public/whatsapp-evolution'
+      path: '/api/public/whatsapp-evolution'
+      fullPath: '/api/public/whatsapp-evolution'
+      preLoaderRoute: typeof ApiPublicWhatsappEvolutionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -670,6 +709,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedLogsAcessoRoute: typeof AuthenticatedLogsAcessoRoute
   AuthenticatedLogsRegistroRoute: typeof AuthenticatedLogsRegistroRoute
   AuthenticatedMaxbotRoute: typeof AuthenticatedMaxbotRoute
+  AuthenticatedWhatsappRoute: typeof AuthenticatedWhatsappRoute
   AuthenticatedTemplatesRoute: typeof AuthenticatedTemplatesRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
   AuthenticatedArquivosConectaRoute: typeof AuthenticatedArquivosConectaRoute
@@ -698,6 +738,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedLogsAcessoRoute: AuthenticatedLogsAcessoRoute,
   AuthenticatedLogsRegistroRoute: AuthenticatedLogsRegistroRoute,
   AuthenticatedMaxbotRoute: AuthenticatedMaxbotRoute,
+  AuthenticatedWhatsappRoute: AuthenticatedWhatsappRoute,
   AuthenticatedTemplatesRoute: AuthenticatedTemplatesRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
   AuthenticatedArquivosConectaRoute: AuthenticatedArquivosConectaRoute,
@@ -728,6 +769,7 @@ const rootRouteChildren: RootRouteChildren = {
   FSlugRoute: FSlugRoute,
   ApiPublicConfigRoute: ApiPublicConfigRoute,
   ApiPublicMaxbotImportRoute: ApiPublicMaxbotImportRoute,
+  ApiPublicWhatsappEvolutionRoute: ApiPublicWhatsappEvolutionRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
